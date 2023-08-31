@@ -7,14 +7,19 @@ const questionsSchema = new mongoose.Schema({
     asker_name: {type: String},
     question_helpfulness: {type: Number},
     reported: {type: Boolean},
-    answers: {
-      {type: String} : {
-        id: {type: Number},
-        body: {type: String},
-        answerer_name: {type: String},
-        helpfulness: {type: Number},
-        photos: [String]
-      },
-    }
+    answers: []
   ],
 });
+
+const answerSchema = new mongoose.Schema({
+  id: {type: Number},
+  body: {type: String},
+  answerer_name: {type: String},
+  helpfulness: {type: Number},
+  photos: []
+})
+
+const answer_photosSchema = new mongoose.Schema({
+  id: {type: Number},
+  url: {type: String}
+})
