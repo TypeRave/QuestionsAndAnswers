@@ -6,30 +6,30 @@ CREATE DATABASE questionsandanswers;
 \c questionsandanswers
 
 CREATE TABLE "questions"(
-    "id" BIGSERIAL NOT NULL PRIMARY KEY UNIQUE,
-    "product_id" BIGINT NOT NULL,
+    "id" SERIAL NOT NULL PRIMARY KEY UNIQUE,
+    "product_id" INTEGER NOT NULL,
     "body" VARCHAR(1000) NOT NULL,
     "date_written" BIGINT NOT NULL,
     "asker_name" VARCHAR(60) NOT NULL,
     "asker_email" VARCHAR(60) NOT NULL,
     "reported" BOOLEAN NOT NULL DEFAULT false,
-    "helpful" BIGINT  NOT NULL DEFAULT 0
+    "helpful" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE "answers"(
-    "id" BIGSERIAL NOT NULL PRIMARY KEY UNIQUE,
-    "question_id" BIGINT REFERENCES questions(id),
+    "id" SERIAL NOT NULL PRIMARY KEY UNIQUE,
+    "question_id" INTEGER REFERENCES questions(id),
     "body" VARCHAR(1000) NOT NULL,
     "date_written" BIGINT NOT NULL,
     "answerer_name" VARCHAR(60) NOT NULL,
     "answerer_email" VARCHAR(60) NOT NULL,
     "reported" BOOLEAN DEFAULT false,
-    "helpful" BIGINT NOT NULL DEFAULT 0
+    "helpful" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE "answers_photos"(
-    "id" BIGSERIAL NOT NULL PRIMARY KEY UNIQUE,
-    "answer_id" BIGINT REFERENCES answers(id),
+    "id" SERIAL NOT NULL PRIMARY KEY UNIQUE,
+    "answer_id" INTEGER REFERENCES answers(id),
     "url" TEXT NOT NULL
 );
 
