@@ -7,7 +7,11 @@ const getQuestions = (req, res) => {
     if (err) {
       throw err;
     } else {
-      res.status(200).send(results.rows)
+      let response = [];
+      results.rows.forEach((obj) => {
+        response.push({...obj, date_written: new Date(parseInt(obj.date_written)).toISOString()})
+      })
+      res.status(200).send(response)
     }
   })
 }
