@@ -2,23 +2,33 @@ const pool = require('../db.js')
 
 const getQuestions = (req, res) => {
   const product_id = req.query.product_id
-  console.log(product_id)
-  pool.query(`SELECT * FROM questions where product_id = ${product_id}`, (err, results) => {
+  const resultObj = { product_id: product_id, results: []}
+  pool.query(`
+      SELECT
+        questions.*,
+          (
+            SELECT jsonb_agg(nested_answers)
+            FROM (
+              SELECT
+               answers.*
+              FROM answers
+              WHERE answers.question_id = questions.id
+            ) AS nested_answers
+          ) AS answers
+      FROM questions WHERE product_id = ${product_id}`,
+      (err, results) => {
     if (err) {
       throw err;
     } else {
-      let response = [];
-      results.rows.forEach((obj) => {
-        response.push({...obj, date_written: new Date(parseInt(obj.date_written)).toISOString()})
-      })
-      res.status(200).send(response)
+      resultObj.results = results.rows
+      res.status(200).send(resultObj)
     }
   })
 }
 
 const getAnswers = (req, res) => {
   // const product_id = req.query.product_id
-  pool.query(`SELECT * FROM answers where question_id = ${1}`, (err, results) => {
+  pool.query(`SELECT * FROM answers where question_id = ${1} AND reported = false`, (err, results) => {
     if (err) {
       throw err;
     } else {
@@ -31,12 +41,25 @@ const markQuestionHelpful = (req, res) => {
   // console.log(req.params.question_id)
   let id = req.params.question_id
   pool.query(`UPDATE questions SET helpful = helpful + 1 WHERE id = ${id}`, (err, results) => {
-    if (err) {
-      throw err
-    } else {
-      res.status(204).send()
-    }
+    if (err) { throw err }
+    else { res.status(204).send() }
   })
 }
 
-module.exports = { getQuestions, getAnswers, markQuestionHelpful }
+const markAnswerHelpful = (req, res) => {
+  let id = req.params.answer_id;
+  pool.query(`UPDATE answers SET helpful = helpful + 1 WHERE id = ${id}`, (err, results) => {
+    if (err) { throw err }
+    else { res.status(204).send() }
+  })
+}
+
+const addQuestion = (req, res) => {
+  // console.log(req.body)
+  const { body, name, email, product_id, date_written } = req.body
+  // const date = Math.floor(Date.now()/1000)
+  // console.log(date)
+  // insert into questions(product_id, body, date_written, asker_name, asker_email)                              values (1, 'body', 1693678396, 'name', 'email')
+}
+
+module.exports = { getQuestions, getAnswers, markQuestionHelpful, markAnswerHelpful, addQuestion }
