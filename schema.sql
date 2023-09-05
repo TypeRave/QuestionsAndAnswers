@@ -48,6 +48,15 @@ FROM '/Users/brandongomez/Desktop/SDC/data/answers_photos.csv'
 DELIMITER ','
 CSV HEADER;
 
+ALTER TABLE questions RENAME COLUMN id TO question_id;
+ALTER TABLE questions RENAME COLUMN body TO question_body;
+ALTER TABLE questions RENAME COLUMN date_written TO question_date;
+ALTER TABLE questions RENAME COLUMN helpful TO question_helpfulness;
+
+ALTER TABLE answers RENAME COLUMN id TO answer_id;
+ALTER TABLE answers RENAME COLUMN date_written TO date;
+ALTER TABLE answers RENAME COLUMN helpful TO helpfulness;
+
 
 -- SELECT row_to_json(questions)
 -- FROM (
