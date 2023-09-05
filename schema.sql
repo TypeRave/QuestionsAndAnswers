@@ -48,6 +48,7 @@ FROM '/Users/brandongomez/Desktop/SDC/data/answers_photos.csv'
 DELIMITER ','
 CSV HEADER;
 
+SELECT pg_catalog.setval(pg_get_serial_sequence('questions', 'id'), (SELECT MAX(id) FROM questions)+1)
 ALTER TABLE questions RENAME COLUMN id TO question_id;
 ALTER TABLE questions RENAME COLUMN body TO question_body;
 ALTER TABLE questions RENAME COLUMN date_written TO question_date;

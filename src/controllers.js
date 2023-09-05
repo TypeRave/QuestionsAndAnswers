@@ -7,13 +7,24 @@ const getQuestions = async (req, res) => {
   const { rows: questionRows } = await pool.query(
     `SELECT * FROM questions WHERE product_id = ${product_id} AND reported = false`
   );
+  // console.log(questionRows) // array of four questions
 
   // Fetch all answers for each question concurrently
   const answersPromises = questionRows.map((question) =>
     pool.query(`SELECT * FROM answers WHERE question_id = ${question.question_id}`)
   );
-
+  // console.log(answersPromises) // array of four promises (one per question)
   const allAnswers = await Promise.all(answersPromises);
+  // console.log(allAnswers[0].rows) // array of four objects containing array of answers
+
+  const photoPromises = allAnswers.map((answerArr) =>
+    answerArr.rows.map((answer) =>
+    pool.query(`SELECT * FROM answers_photos WHERE answer_id = ${answer.answer_id}`)
+    )
+  )
+  const allPhotos = await Promise.all(photoPromises.map((photo) => Promise.all(photo)))
+  // console.log(allPhotos)
+
 
   // Map answers to their respective questions
   for (let i = 0; i < questionRows.length; i++) {
@@ -29,8 +40,20 @@ const getQuestions = async (req, res) => {
         helpfulness: helpfulness,
         photos: []
         };
+        for (var j = 0; j < allPhotos.length; j++) {
+          var currentPhotoArr = allPhotos[i][j]?.rows
+          // console.log(currentPhotoArr)
+          if (currentPhotoArr && currentPhotoArr.length) {
+            for (var photoObj of currentPhotoArr) {
+              if(answer_id === photoObj.answer_id) {
+                questionRows[i].answers[answer_id].photos.push(photoObj.url)
+              }
+            }
+          }
+        }
     });
   }
+
   // console.log(questionRows);
   res.status(200).send({ product_id: product_id, results: questionRows })
 };
