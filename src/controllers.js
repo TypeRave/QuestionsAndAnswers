@@ -15,13 +15,14 @@ const getQuestions = async (req, res) => {
   );
   // console.log(answersPromises) // array of four promises (one per question)
   const allAnswers = await Promise.all(answersPromises);
-  // console.log(allAnswers[0].rows) // array of four objects containing array of answers
+  // console.log(allAnswers[0].rows) // array of number of questions containing array of answers
 
   const photoPromises = allAnswers.map((answerArr) =>
     answerArr.rows.map((answer) =>
     pool.query(`SELECT * FROM answers_photos WHERE answer_id = ${answer.answer_id}`)
     )
   )
+  // console.log(photoPromises)
   const allPhotos = await Promise.all(photoPromises.map((photo) => Promise.all(photo)))
   // console.log(allPhotos)
 

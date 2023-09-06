@@ -48,7 +48,14 @@ FROM '/Users/brandongomez/Desktop/SDC/data/answers_photos.csv'
 DELIMITER ','
 CSV HEADER;
 
-SELECT pg_catalog.setval(pg_get_serial_sequence('questions', 'id'), (SELECT MAX(id) FROM questions)+1)
+SELECT pg_catalog.setval(pg_get_serial_sequence('questions', 'id'), (SELECT MAX(id) FROM questions)+1);
+SELECT pg_catalog.setval(pg_get_serial_sequence('answers', 'id'), (SELECT MAX(id) FROM answers)+1);
+SELECT pg_catalog.setval(pg_get_serial_sequence('answers_photos', 'id'), (SELECT MAX(id) FROM answers_photos)+1);
+
+CREATE INDEX product_index ON questions (product_id);
+CREATE INDEX question_index ON answers (question_id);
+CREATE INDEX answer_index ON answers_photos (answer_id);
+
 ALTER TABLE questions RENAME COLUMN id TO question_id;
 ALTER TABLE questions RENAME COLUMN body TO question_body;
 ALTER TABLE questions RENAME COLUMN date_written TO question_date;
