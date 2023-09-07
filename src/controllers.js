@@ -7,25 +7,22 @@ const getQuestions = async (req, res) => {
   const { rows: questionRows } = await pool.query(
     `SELECT * FROM questions WHERE product_id = ${product_id} AND reported = false`
   );
-  // console.log(questionRows) // array of four questions
 
-  // Fetch all answers for each question concurrently
+  // Fetch all answers for each question
   const answersPromises = questionRows.map((question) =>
     pool.query(`SELECT * FROM answers WHERE question_id = ${question.question_id}`)
   );
-  // console.log(answersPromises) // array of four promises (one per question)
+  // Resolve answer promises
   const allAnswers = await Promise.all(answersPromises);
-  // console.log(allAnswers[0].rows) // array of number of questions containing array of answers
 
+  // Fetch all photos for answers
   const photoPromises = allAnswers.map((answerArr) =>
     answerArr.rows.map((answer) =>
     pool.query(`SELECT * FROM answers_photos WHERE answer_id = ${answer.answer_id}`)
     )
   )
-  // console.log(photoPromises)
+  // Resolve photos promises
   const allPhotos = await Promise.all(photoPromises.map((photo) => Promise.all(photo)))
-  // console.log(allPhotos)
-
 
   // Map answers to their respective questions
   for (let i = 0; i < questionRows.length; i++) {
@@ -36,7 +33,7 @@ const getQuestions = async (req, res) => {
       questionRows[i].answers[answer_id] = {
         id: answer_id,
         body: body,
-        date: date,
+        date: new Date(parseInt(date)),
         answerer_name: answerer_name,
         helpfulness: helpfulness,
         photos: []
@@ -55,39 +52,50 @@ const getQuestions = async (req, res) => {
     });
   }
 
-  // console.log(questionRows);
   res.status(200).send({ product_id: product_id, results: questionRows })
 };
 
-// const getQuestions = (req, res) => {
-//   const product_id = req.query.product_id
-//   const questionsAndAnswers = [];
-//   pool.query(`SELECT * FROM questions WHERE product_id = ${product_id} AND reported = false`)
-//     .then((results) => {
-//       results.rows.map((question) => {
-//         question.answers = {}
-//         questionsAndAnswers.push(question)
-//         pool.query(`SELECT * FROM answers where question_id = ${question.question_id}`)
-//           .then((results) => {
-//           })
-//         })
-//         .then(console.log(questionsAndAnswers))
-//     })
-// }
+const getAnswers = async (req, res) => {
+  const question_id = req.params.question_id
+  const page = req.params.page || 1;
+  const count = req.params.count || 5;
 
-const getAnswers = (req, res) => {
-  // const product_id = req.query.product_id
-  pool.query(`SELECT * FROM answers where question_id = ${2} AND reported = false`, (err, results) => {
-    if (err) {
-      throw err;
-    } else {
-      res.status(200).send(results.rows)
+  const { rows: answerRows } = await pool.query(`SELECT * FROM answers
+    LEFT JOIN answers_photos ON answers_photos.answer_id = answers.answer_id
+    where answers.question_id = ${question_id} AND reported = false`)
+
+  const answers = answerRows.map((answer) => {
+    const { answer_id, body, date, answerer_name, helpfulness } = answer
+    return {
+      answer_id: answer_id,
+      body: body,
+      date: new Date(parseInt(date)),
+      answerer_name: answerer_name,
+      helpfulness: helpfulness,
+      photos: []
     }
   })
+    .filter((v,i,a)=>a.findIndex(v2=>(v2.answer_id===v.answer_id))===i)
+
+  answers.forEach((answer) => {
+    for (var i = 0; i < answerRows.length; i++) {
+      if (answerRows[i].answer_id === answer.answer_id && answerRows[i].url !== null) {
+        answer.photos.push(answerRows[i].url)
+      }
+    }
+  })
+
+  const responseObj = {
+    question: question_id,
+    page: page,
+    count: count,
+    results: answers.slice(0, count)
+  }
+
+  res.status(200).send(responseObj)
 }
 
 const markQuestionHelpful = (req, res) => {
-  // console.log(req.params.question_id)
   let id = req.params.question_id
   pool.query(`UPDATE questions SET helpful = helpful + 1 WHERE id = ${id}`, (err, results) => {
     if (err) { throw err }
@@ -104,21 +112,10 @@ const markAnswerHelpful = (req, res) => {
 }
 
 const addQuestion = (req, res) => {
-  // console.log(req.body)
+  console.log(req.body)
   const { body, name, email, product_id, date_written } = req.body
-  // const date = Math.floor(Date.now()/1000)
-  // console.log(date)
-  // insert into questions(product_id, body, date_written, asker_name, asker_email) values (1, 'body', 1693678396, 'name', 'email')
+  pool.query(`insert into questions(product_id, question_body, question_date, asker_name, asker_email) values (${product_id}, '${body}', ${date_written}, '${name}', '${email}')`)
+  res.status(201).send()
 }
 
 module.exports = { getQuestions, getAnswers, markQuestionHelpful, markAnswerHelpful, addQuestion }
-
-// `SELECT questions.*,
-//     ( SELECT jsonb_agg(nested_answers) FROM
-//       ( SELECT answers.*,
-//          ( SELECT json_agg(nested_photos) FROM
-//            ( SELECT answers_photos.url FROM answers_photos WHERE answers_photos.answer_id = answers.id
-//            ) AS nested_photos
-//          ) AS photos FROM answers WHERE answers.question_id = questions.id
-//       ) AS nested_answers
-//     ) AS answers FROM questions WHERE product_id = ${product_id} and reported = false`
