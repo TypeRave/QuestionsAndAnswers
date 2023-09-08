@@ -109,7 +109,6 @@ const markAnswerHelpful = (req, res) => {
 }
 
 const addQuestion = (req, res) => {
-  console.log(req.body)
   let { body, name, email, product_id, date_written } = req.body
   date_written = Math.floor(Date.now()/1000)
   pool.query(postQuestionQuery, [product_id, body, date_written, name, email])
@@ -123,11 +122,11 @@ const addAnswer = async (req, res) => {
   const date = Math.floor(Date.now()/1000)
   pool.query(postAnswerQuery, [question_id, body, name, email, date])
   const { rows: answer_id } = await pool.query(`SELECT count(*) FROM answers`)
-  const currentAnswerId = parseInt(answer_id[0].count) + 3 //add 3 for next (current) answer
-  // console.log(typeof currentAnswerId + currentAnswerId)
+  const currentAnswerId = parseInt(answer_id[0].count) + 2 //add 3 for next (current) answer
+  // console.log(typeof currentAnswerId + ' ' + currentAnswerId)
   if (photos.length) {
     photos.forEach((photo) => {
-      pool.query(`INSERT INTO answers_photos (answer_id, url) VALUES ($1, $2)`, [6879312, photo])
+      pool.query(`INSERT INTO answers_photos (answer_id, url) VALUES ($1, $2)`, [currentAnswerId, photo])
     })
   }
   res.status(201).send()
