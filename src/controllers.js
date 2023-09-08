@@ -1,16 +1,15 @@
 const pool = require('../db.js')
+const { getQuestionsQuery, getQuestionsAnswersQuery, getQuestionsPhotosQuery, getAnswersQuery, postQuestionQuery, postAnswerQuery } = require('./queries.js')
 
 const getQuestions = async (req, res) => {
   const product_id = req.query.product_id;
-
   // Fetch all questions
   const { rows: questionRows } = await pool.query(
-    `SELECT * FROM questions WHERE product_id = ${product_id} AND reported = false`
+    getQuestionsQuery, [product_id]
   );
-
   // Fetch all answers for each question
   const answersPromises = questionRows.map((question) =>
-    pool.query(`SELECT * FROM answers WHERE question_id = ${question.question_id}`)
+    pool.query(getQuestionsAnswersQuery, [question.question_id])
   );
   // Resolve answer promises
   const allAnswers = await Promise.all(answersPromises);
@@ -18,7 +17,7 @@ const getQuestions = async (req, res) => {
   // Fetch all photos for answers
   const photoPromises = allAnswers.map((answerArr) =>
     answerArr.rows.map((answer) =>
-    pool.query(`SELECT * FROM answers_photos WHERE answer_id = ${answer.answer_id}`)
+    pool.query(getQuestionsPhotosQuery, [answer.answer_id])
     )
   )
   // Resolve photos promises
@@ -27,6 +26,7 @@ const getQuestions = async (req, res) => {
   // Map answers to their respective questions
   for (let i = 0; i < questionRows.length; i++) {
     const answerRows = allAnswers[i].rows;
+    questionRows[i].question_date = new Date(parseInt(questionRows[i].question_date))
     questionRows[i].answers = {};
     answerRows.forEach((answer) => {
       const { answer_id, body, date, answerer_name, helpfulness } = answer;
@@ -51,7 +51,6 @@ const getQuestions = async (req, res) => {
         }
     });
   }
-
   res.status(200).send({ product_id: product_id, results: questionRows })
 };
 
@@ -60,9 +59,7 @@ const getAnswers = async (req, res) => {
   const page = req.params.page || 1;
   const count = req.params.count || 5;
 
-  const { rows: answerRows } = await pool.query(`SELECT * FROM answers
-    LEFT JOIN answers_photos ON answers_photos.answer_id = answers.answer_id
-    where answers.question_id = ${question_id} AND reported = false`)
+  const { rows: answerRows } = await pool.query(getAnswersQuery, [question_id])
 
   const answers = answerRows.map((answer) => {
     const { answer_id, body, date, answerer_name, helpfulness } = answer
@@ -113,9 +110,27 @@ const markAnswerHelpful = (req, res) => {
 
 const addQuestion = (req, res) => {
   console.log(req.body)
-  const { body, name, email, product_id, date_written } = req.body
-  pool.query(`insert into questions(product_id, question_body, question_date, asker_name, asker_email) values (${product_id}, '${body}', ${date_written}, '${name}', '${email}')`)
+  let { body, name, email, product_id, date_written } = req.body
+  date_written = Math.floor(Date.now()/1000)
+  pool.query(postQuestionQuery, [product_id, body, date_written, name, email])
   res.status(201).send()
 }
 
-module.exports = { getQuestions, getAnswers, markQuestionHelpful, markAnswerHelpful, addQuestion }
+const addAnswer = async (req, res) => {
+  // question_id, body, name, email, date
+  const question_id = req.params.question_id
+  const { body, name, email, photos } = req.body
+  const date = Math.floor(Date.now()/1000)
+  pool.query(postAnswerQuery, [question_id, body, name, email, date])
+  const { rows: answer_id } = await pool.query(`SELECT count(*) FROM answers`)
+  const currentAnswerId = parseInt(answer_id[0].count) + 3 //add 3 for next (current) answer
+  // console.log(typeof currentAnswerId + currentAnswerId)
+  if (photos.length) {
+    photos.forEach((photo) => {
+      pool.query(`INSERT INTO answers_photos (answer_id, url) VALUES ($1, $2)`, [6879312, photo])
+    })
+  }
+  res.status(201).send()
+}
+
+module.exports = { getQuestions, getAnswers, markQuestionHelpful, markAnswerHelpful, addQuestion, addAnswer }

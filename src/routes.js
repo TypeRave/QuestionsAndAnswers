@@ -8,5 +8,6 @@ router.get('/questions/:question_id/answers/', controller.getAnswers);
 router.put('/questions/:question_id/helpful/', controller.markQuestionHelpful)
 router.put('/answers/:answer_id/helpful/', controller.markAnswerHelpful)
 router.post('/questions/', controller.addQuestion)
+router.post('/questions/:question_id/answers', controller.addAnswer)
 
 module.exports = router;
