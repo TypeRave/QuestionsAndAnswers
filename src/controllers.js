@@ -2,57 +2,132 @@ const pool = require('../db.js')
 const { getQuestionsQuery, getQuestionsAnswersQuery, getQuestionsPhotosQuery, getAnswersQuery, postQuestionQuery, postAnswerQuery } = require('./queries.js')
 
 const getQuestions = async (req, res) => {
-  const product_id = req.query.product_id;
-  // Fetch all questions
-  const { rows: questionRows } = await pool.query(
-    getQuestionsQuery, [product_id]
-  );
-  // Fetch all answers for each question
-  const answersPromises = questionRows.map((question) =>
-    pool.query(getQuestionsAnswersQuery, [question.question_id])
-  );
-  // Resolve answer promises
-  const allAnswers = await Promise.all(answersPromises);
+  const product_id = req.query.product_id
 
-  // Fetch all photos for answers
-  const photoPromises = allAnswers.map((answerArr) =>
-    answerArr.rows.map((answer) =>
-    pool.query(getQuestionsPhotosQuery, [answer.answer_id])
-    )
-  )
-  // Resolve photos promises
-  const allPhotos = await Promise.all(photoPromises.map((photo) => Promise.all(photo)))
+  const { rows: questionsRows } = await pool.query(`
+    SELECT questions.question_id, question_body, question_date, asker_name, question_helpfulness,questions.reported, answers.answer_id, answers.question_id AS answerQuestionId, answers.body, answers.date, answerer_name, answers.helpfulness, url, answers_photos.answer_id AS photoAnswerId FROM questions
+    LEFT JOIN answers ON answers.question_id = questions.question_id
+    LEFT JOIN answers_photos ON answers_photos.answer_id = answers.answer_id
+    WHERE questions.product_id = $1 AND questions.reported = false
+    `, [product_id])
 
-  // Map answers to their respective questions
-  for (let i = 0; i < questionRows.length; i++) {
-    const answerRows = allAnswers[i].rows;
-    questionRows[i].question_date = new Date(parseInt(questionRows[i].question_date))
-    questionRows[i].answers = {};
-    answerRows.forEach((answer) => {
-      const { answer_id, body, date, answerer_name, helpfulness } = answer;
-      questionRows[i].answers[answer_id] = {
-        id: answer_id,
-        body: body,
-        date: new Date(parseInt(date)),
-        answerer_name: answerer_name,
-        helpfulness: helpfulness,
-        photos: []
-        };
-        for (var j = 0; j < allPhotos.length; j++) {
-          var currentPhotoArr = allPhotos[i][j]?.rows
-          // console.log(currentPhotoArr)
-          if (currentPhotoArr && currentPhotoArr.length) {
-            for (var photoObj of currentPhotoArr) {
-              if(answer_id === photoObj.answer_id) {
-                questionRows[i].answers[answer_id].photos.push(photoObj.url)
-              }
-            }
-          }
+  const questionsArr = questionsRows.map((question) => {
+    const {
+      question_id,
+      question_body,
+      question_date,
+      asker_name,
+      question_helpfulness,
+      reported
+    } = question
+
+    return {
+      question_id: question_id,
+      question_body: question_body,
+      question_date: question_date,
+      asker_name: asker_name,
+      question_helpfulness: question_helpfulness,
+      reported: reported,
+      answers: {}
+    }
+  }).filter((v,i,a)=>a.findIndex(v2=>(v2.question_id===v.question_id))===i)
+
+  questionsArr.forEach((question) => {
+    for (var i = 0; i < questionsRows.length; i++) {
+      const currentQuestionRow = questionsRows[i]
+      const {
+        answer_id,
+        body,
+        date,
+        answerer_name,
+        helpfulness,
+        answerquestionid,
+        photoAnswerId
+      } = currentQuestionRow
+      // console.log(currentQuestionRow)
+      if (question.question_id === answerquestionid) {
+        question.answers[answer_id] = {
+          answer_id: answer_id,
+          body: body,
+          date: date,
+          answerer_name: answerer_name,
+          helpfulness: helpfulness,
+          photos: []
         }
-    });
-  }
-  res.status(200).send({ product_id: product_id, results: questionRows })
-};
+      }
+    }
+  })
+
+  questionsArr.forEach((question) => {
+    // console.log(question.answers)
+    for (var i = 0; i < questionsRows.length; i++) {
+      if (question.answers[questionsRows[i].photoanswerid]) {
+        // console.log(questionsRows[i].photoanswerid)
+        question.answers[questionsRows[i].photoanswerid].photos.push(questionsRows[i].url)
+      }
+    }
+  })
+
+
+  // const responseObj = {
+  //   product_id: product_id,
+  //   results: questionsArr
+  // }
+    res.status(200).send( { product_id: product_id, results: questionsArr })
+}
+
+// const getQuestions = async (req, res) => {
+//   const product_id = req.query.product_id;
+//   // Fetch all questions
+//   const { rows: questionRows } = await pool.query(
+//     getQuestionsQuery, [product_id]
+//   );
+//   // Fetch all answers for each question
+//   const answersPromises = questionRows.map((question) =>
+//     pool.query(getQuestionsAnswersQuery, [question.question_id])
+//   );
+//   // Resolve answer promises
+//   const allAnswers = await Promise.all(answersPromises);
+
+//   // Fetch all photos for answers
+//   const photoPromises = allAnswers.map((answerArr) =>
+//     answerArr.rows.map((answer) =>
+//     pool.query(getQuestionsPhotosQuery, [answer.answer_id])
+//     )
+//   )
+//   // Resolve photos promises
+//   const allPhotos = await Promise.all(photoPromises.map((photo) => Promise.all(photo)))
+
+//   // Map answers to their respective questions
+//   for (let i = 0; i < questionRows.length; i++) {
+//     const answerRows = allAnswers[i].rows;
+//     questionRows[i].question_date = new Date(parseInt(questionRows[i].question_date))
+//     questionRows[i].answers = {};
+//     answerRows.forEach((answer) => {
+//       const { answer_id, body, date, answerer_name, helpfulness } = answer;
+//       questionRows[i].answers[answer_id] = {
+//         id: answer_id,
+//         body: body,
+//         date: new Date(parseInt(date)),
+//         answerer_name: answerer_name,
+//         helpfulness: helpfulness,
+//         photos: []
+//         };
+//         for (var j = 0; j < allPhotos.length; j++) {
+//           var currentPhotoArr = allPhotos[i][j]?.rows
+//           // console.log(currentPhotoArr)
+//           if (currentPhotoArr && currentPhotoArr.length) {
+//             for (var photoObj of currentPhotoArr) {
+//               if(answer_id === photoObj.answer_id) {
+//                 questionRows[i].answers[answer_id].photos.push(photoObj.url)
+//               }
+//             }
+//           }
+//         }
+//     });
+//   }
+//   res.status(200).send({ product_id: product_id, results: questionRows })
+// };
 
 const getAnswers = async (req, res) => {
   const question_id = req.params.question_id
