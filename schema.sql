@@ -29,7 +29,7 @@ CREATE TABLE "answers"(
 
 CREATE TABLE "answers_photos"(
     "id" SERIAL NOT NULL PRIMARY KEY UNIQUE,
-    "answer_id" SERIAL REFERENCES answers(id),
+    "answer_id" SERIAL,
     "url" TEXT NOT NULL
 );
 
