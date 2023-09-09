@@ -5,7 +5,28 @@ const path = require("path");
 const app = express()
 const { PORT } = process.env;
 const fs = require('fs');
-var compression = require('compression')
+const compression = require('compression')
+const mcache = require('memory-cache')
+
+app.use(compression())
+app.use(express.json())
+var cache = (duration) => {
+  return (req, res, next) => {
+    let key = '__express__' + req.originalUrl || req.url
+    let cachedBody = mcache.get(key)
+    if (cachedBody) {
+      res.status(200).send(JSON.parse(cachedBody))
+      return
+    } else {
+      res.sendResponse = res.send
+      res.send = (body) => {
+        mcache.put(key, body, duration * 1000);
+        res.sendResponse(body)
+      }
+      next()
+    }
+  }
+}
 
 const fp = path.join(__dirname, './verification.txt')
 
@@ -14,9 +35,7 @@ app.use('/loaderio-8e3f6ce177fe776f0d0e27209eb45922', (req, res) =>{
   res.send(body);
 })
 
-app.use(compression())
-app.use(express.json())
-app.use('/qa', router)
-// app.use('/', (req, res) => res.send('connected'))
+app.use('/qa', cache(60), router)
+app.use('/', (req, res) => res.send('connected'))
 
 app.listen(PORT, () => console.log('listening on port 3000'))
