@@ -1,15 +1,10 @@
 const pool = require('../db.js')
-const { getQuestionsQuery, getQuestionsAnswersQuery, getQuestionsPhotosQuery, getAnswersQuery, postQuestionQuery, postAnswerQuery } = require('./queries.js')
+const { getQuestionsQuery, getQuestionsAnswersQuery, getQuestionsPhotosQuery, getAnswersQuery, postQuestionQuery, postAnswerQuery, getQuestionsRevised } = require('./queries.js')
 
 const getQuestions = async (req, res) => {
   const product_id = req.query.product_id
 
-  const { rows: questionsRows } = await pool.query(`
-    SELECT questions.question_id, question_body, question_date, asker_name, question_helpfulness,questions.reported, answers.answer_id, answers.question_id AS answerQuestionId, answers.body, answers.date, answerer_name, answers.helpfulness, url, answers_photos.answer_id AS photoAnswerId FROM questions
-    LEFT JOIN answers ON answers.question_id = questions.question_id
-    LEFT JOIN answers_photos ON answers_photos.answer_id = answers.answer_id
-    WHERE questions.product_id = $1 AND questions.reported = false
-    `, [product_id])
+  const { rows: questionsRows } = await pool.query(getQuestionsRevised, [product_id])
 
   const questionsArr = questionsRows.map((question) => {
     const {
@@ -186,8 +181,8 @@ const addAnswer = async (req, res) => {
   const { body, name, email, photos } = req.body
   const date = Math.floor(Date.now()/1000)
   pool.query(postAnswerQuery, [question_id, body, name, email, date])
-  const { rows: answer_id } = await pool.query(`SELECT count(*) FROM answers`)
-  const currentAnswerId = parseInt(answer_id[0].count) + 2 //add 3 for next (current) answer
+  const  { rows: answer_id }  = await pool.query(`SELECT MAX(answer_id) FROM answers`)
+  const currentAnswerId = parseInt(answer_id[0].max) + 2 //add 2 for next (current) answer
   if (photos.length) {
     photos.forEach((photo) => {
       pool.query(`INSERT INTO answers_photos (answer_id, url) VALUES ($1, $2)`, [currentAnswerId, photo])
