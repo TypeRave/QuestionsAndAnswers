@@ -41,7 +41,7 @@ app.use('/loaderio-8e3f6ce177fe776f0d0e27209eb45922', (req, res) =>{
   res.send(body);
 })
 
-app.use('/qa', cache(30), router)
+app.use('/qa', cache(10), router)
 app.use('/', (req, res) => res.send('connected'))
 
 app.listen(PORT, () => console.log(`listening on port ${PORT}`))
